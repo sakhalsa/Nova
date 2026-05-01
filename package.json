@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "workspaces": [
+    "engine",
+    "templates",
+    "cli",
+    "mcp-server",
+    "action"
+  ]
+}

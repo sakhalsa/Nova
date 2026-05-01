@@ -1,0 +1,33 @@
+name: 'AIEI Score'
+description: 'Run AI Effectiveness & Efficiency Index scoring and comment results on PRs'
+branding:
+  icon: 'bar-chart-2'
+  color: 'orange'
+
+inputs:
+  config_path:
+    description: 'Path to .aiei.json config file'
+    required: false
+    default: '.aiei.json'
+  hourly_rate:
+    description: 'Blended engineering hourly rate for ROI calculation'
+    required: false
+    default: '75'
+
+outputs:
+  aiei_score:
+    description: 'Composite AIEI index (0-100)'
+  aiei_stage:
+    description: 'Stage classification (Foundation/Growth/Scale/Leader)'
+  aiei_q:
+    description: 'Quality dimension index'
+  aiei_r:
+    description: 'Reliability dimension index'
+  aiei_l:
+    description: 'Lead Time dimension index'
+  aiei_c:
+    description: 'Cost Efficiency dimension index'
+
+runs:
+  using: 'node20'
+  main: 'dist/action.js'

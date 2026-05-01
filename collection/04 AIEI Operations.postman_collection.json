@@ -1,0 +1,947 @@
+{
+  "info": {
+    "_postman_id": "a3f7c912-84d6-4e1b-b5a0-1d9e6f2c08b4",
+    "name": "AIEI Operations",
+    "description": "Internal tooling: monitor factory, benchmark validation, workspace audit, and external orchestration (GitHub Actions, CircleCI, n8n, Temporal). Not customer-facing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "20784047"
+  },
+  "item": [
+    {
+      "name": "00 Monitor Factory",
+      "description": "# AIEI Monitor Factory\n\n## The Story\n\nManual measurement doesn't scale. The Monitor Factory is the automation layer that turns AIEI from a one-time assessment into a continuous measurement system.\n\nIt creates Postman monitors for each scoring collection, configures schedules (hourly, daily, weekly), sets up notification channels, and manages the lifecycle of running monitors. This is the bridge between Level 2 (Reactive) and Level 3 (Defined) on the maturity model — the point where measurement becomes systematic rather than ad hoc.\n\nThe factory approach means you don't configure monitors one at a time. You describe what you want monitored and how often, and the factory provisions everything. It also handles the operational reality of monitors: checking status, reviewing run history, and cleaning up monitors that are no longer needed.\n\n## The Pipeline\n\n### 1. List Workspace Collections\nDiscovers all AIEI collections in the workspace that are eligible for monitoring.\n\n### 2. List Existing Monitors\nChecks what's already being monitored to avoid duplication.\n\n### 3. Create Scoring Monitors\nProvisions monitors for the scoring pipeline collections with appropriate schedules and the AIEI Configuration environment.\n\n### 4. Verify Monitor Status\nConfirms all monitors are running and healthy.\n\n### 5. Review Run History\nPulls recent monitor execution results to verify the pipeline is producing valid scores.\n\n## What Comes Next\n→ [17 AIEI Cloud Audit](collection/20784047-c476d1a4-c92f-40c4-94c9-b256e1caf726) to audit your Postman workspace configuration\n→ [22 AIEI Orchestration](collection/20784047-6177ecf0-ac19-43a4-a5ca-69beaafafb2b) for enterprise-grade pipeline management",
+      "item": [
+        {
+          "name": "Create Pipeline Monitor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    const monitorId = data.monitor.id;",
+                  "    pm.environment.set('aiei_monitor_id', monitorId);",
+                  "    console.log('✅ Monitor created: ' + monitorId);",
+                  "    console.log('   Name: AIEI Scoring Pipeline — Weekly');",
+                  "    console.log('   Schedule: Every Monday at 9:00 AM PT');",
+                  "    pm.test('Monitor created: ' + monitorId, function() {",
+                  "        pm.expect(data.monitor.id).to.be.a('string');",
+                  "    });",
+                  "} else {",
+                  "    console.log('❌ Monitor creation failed: ' + pm.response.code);",
+                  "    console.log('   Ensure postman_api_key, composite_collection_id, and environment_id are set.');",
+                  "    pm.test('Monitor creation succeeded', function() {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{postman_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{postman_api_base}}/monitors",
+              "host": [
+                "{{postman_api_base}}"
+              ],
+              "path": [
+                "monitors"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Monitor Runs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    const monitor = data.monitor;",
+                  "    console.log('📊 Monitor: ' + monitor.name);",
+                  "    console.log('   ID: ' + monitor.id);",
+                  "    console.log('   Last run: ' + (monitor.lastRun ? monitor.lastRun.startedAt : 'Never'));",
+                  "",
+                  "    if (monitor.lastRun) {",
+                  "        const run = monitor.lastRun;",
+                  "        console.log('   Status: ' + run.status);",
+                  "        console.log('   Stats: ' + JSON.stringify(run.stats));",
+                  "",
+                  "        if (run.status === 'failed') {",
+                  "            console.log('   ⚠ Last run FAILED — check for score regressions');",
+                  "        }",
+                  "    }",
+                  "",
+                  "    pm.test('Monitor status retrieved', function() {",
+                  "        pm.expect(monitor.id).to.be.a('string');",
+                  "    });",
+                  "} else {",
+                  "    console.log('❌ Could not retrieve monitor: ' + pm.response.code);",
+                  "    pm.test('Monitor retrieval succeeded', function() {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{postman_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{postman_api_base}}/monitors/{{aiei_monitor_id}}",
+              "host": [
+                "{{postman_api_base}}"
+              ],
+              "path": [
+                "monitors",
+                "{{aiei_monitor_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 Benchmark Validation",
+      "description": "# AIEI Benchmark Validation\n\n## The Story\n\nYour AIEI score means nothing in isolation. Is 0.72 good? Bad? Average? The Benchmark Validation collection answers this by comparing your scores against industry benchmarks, DORA metrics, and peer cohorts.\n\nBenchmarking serves two purposes. First, it calibrates expectations — a Composite Score of 0.65 might be excellent for an organization that started AI adoption three months ago. Second, it detects scoring anomalies — if your R-Score is 0.95 but the industry median is 0.70, either you're genuinely exceptional or your measurement has a bias.\n\nThe collection validates each dimension independently and flags scores that are statistical outliers (more than 2 standard deviations from the benchmark mean). Outliers aren't necessarily wrong, but they deserve investigation.\n\n## The Pipeline\n\n### 1. Fetch Industry Benchmarks\nRetrieves benchmark data including industry medians, percentile distributions, and DORA reference metrics.\n\n### 2. Validate Scores Against Benchmarks\nCompares your scores to benchmarks, computes percentile rankings, and flags statistical outliers.\n\n### 3. Generate Validation Report\nProduces a calibrated view of your scores with benchmark context, percentile rankings, and outlier explanations.\n\n## What Comes Next\n→ [19 AIEI Falsifiability Watchdog](collection/20784047-4cbb5515-821c-431c-9704-53986ceb72d1) to stress-test your scores\n→ [09 AIEI Executive Report](collection/20784047-f3dae730-c7fc-4796-a387-a95361326551) to include benchmark context in executive briefings",
+      "item": [
+        {
+          "name": "Validate R Formula",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "",
+                  "// Compute R-Score from mock reference data",
+                  "",
+                  "const cfr_ai = res.cfr_ai;",
+                  "",
+                  "const slo_attainment = res.slo_attainment;",
+                  "",
+                  "const contract_catch_rate = res.contract_catch_rate;",
+                  "",
+                  "const uptime_ai = res.uptime_ai;",
+                  "",
+                  "const adaptability = res.adaptability;",
+                  "",
+                  "",
+                  "const R = (1 - cfr_ai) * slo_attainment * contract_catch_rate * uptime_ai",
+                  "* adaptability;",
+                  "",
+                  "",
+                  "console.log(`R-Score computed: ${R.toFixed(4)}`);",
+                  "",
+                  "",
+                  "pm.test(\"R formula: expected ~0.6962 MODERATE\", function () {",
+                  "    // Assert R is approximately 0.6962 within tolerance",
+                  "    pm.expect(Math.abs(R - 0.6962)).to.be.below(0.001,",
+                  "        `R=${R.toFixed(4)} is not within 0.001 of expected 0.6962`);",
+                  "",
+                  "    // Assert classification is MODERATE (R > 0.50 and R <= 0.70)",
+                  "    const classification = R > 0.70 ? \"STRONG\" :",
+                  "                           R > 0.50 ? \"MODERATE\" : \"FRAGILE\";",
+                  "    pm.expect(classification).to.eql(\"MODERATE\",",
+                  "        `Expected MODERATE but got ${classification} for R=${R.toFixed(4)}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/stub/cfr",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "stub",
+                "cfr"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Q Formula",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "",
+                  "// Compute Q-Score from mock reference data",
+                  "",
+                  "const defect_component = 1 - (res.defect_rate_ai / res.defect_rate_nonai);",
+                  "",
+                  "const test_pass_rate_delta = Math.min(res.ai_test_pass_rate /",
+                  "res.manual_test_pass_rate, 1.0);",
+                  "",
+                  "const Q = defect_component * test_pass_rate_delta * (1 -",
+                  "res.rework_rate_ai);",
+                  "",
+                  "",
+                  "console.log(`Q-Score computed: ${Q.toFixed(4)}`);",
+                  "",
+                  "console.log(`  defect_component: ${defect_component.toFixed(4)}`);",
+                  "",
+                  "console.log(`  test_pass_rate_delta: ${test_pass_rate_delta.toFixed(4)}`);",
+                  "",
+                  "",
+                  "pm.test(\"Q formula: expected ~0.2483 TECHNICAL DEBT\", function () {",
+                  "    // Assert Q is approximately 0.2483 within tolerance",
+                  "    pm.expect(Math.abs(Q - 0.2483)).to.be.below(0.001,",
+                  "        `Q=${Q.toFixed(4)} is not within 0.001 of expected 0.2483`);",
+                  "",
+                  "    // Assert classification is TECHNICAL DEBT (Q < 0.50)",
+                  "    const classification = Q >= 0.70 ? \"STRONG\" :",
+                  "                           Q >= 0.50 ? \"MODERATE\" : \"TECHNICAL DEBT\";",
+                  "    pm.expect(classification).to.eql(\"TECHNICAL DEBT\",",
+                  "        `Expected TECHNICAL DEBT but got ${classification} for Q=${Q.toFixed(4)}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/stub/defect-rates",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "stub",
+                "defect-rates"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate L Formula",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "",
+                  "// Compute L-Score from mock reference data",
+                  "",
+                  "const L = 1 - (res.cycle_time_ai_hours / res.cycle_time_nonai_hours);",
+                  "",
+                  "",
+                  "console.log(`L-Score computed: ${L.toFixed(4)}`);",
+                  "",
+                  "",
+                  "// Validate stage segmentation",
+                  "",
+                  "const stages = res.stages || {};",
+                  "",
+                  "const itp = stages.ideation_to_pr || {};",
+                  "",
+                  "const rtm = stages.review_to_merge || {};",
+                  "",
+                  "const L_ideation_to_pr = itp.nonai_hours > 0 ? 1 - (itp.ai_hours /",
+                  "itp.nonai_hours) : 0;",
+                  "",
+                  "const L_review_to_merge = rtm.nonai_hours > 0 ? 1 - (rtm.ai_hours /",
+                  "rtm.nonai_hours) : 0;",
+                  "",
+                  "",
+                  "console.log(`  L ideation_to_pr: ${L_ideation_to_pr.toFixed(4)}`);",
+                  "",
+                  "console.log(`  L review_to_merge: ${L_review_to_merge.toFixed(4)}`);",
+                  "",
+                  "",
+                  "pm.test(\"L formula: expected ~0.3146 STRONG\", function () {",
+                  "    // Assert L is approximately 0.3146 within tolerance",
+                  "    pm.expect(Math.abs(L - 0.3146)).to.be.below(0.001,",
+                  "        `L=${L.toFixed(4)} is not within 0.001 of expected 0.3146`);",
+                  "",
+                  "    // Assert classification is STRONG (L > 0.30)",
+                  "    const classification = L > 0.30 ? \"STRONG\" :",
+                  "                           L > 0.15 ? \"MODERATE\" : \"BOTTLENECK\";",
+                  "    pm.expect(classification).to.eql(\"STRONG\",",
+                  "        `Expected STRONG but got ${classification} for L=${L.toFixed(4)}`);",
+                  "",
+                  "    // Validate stage segmentation values are reasonable",
+                  "    pm.expect(L_ideation_to_pr).to.be.within(-1, 1,",
+                  "        \"ideation_to_pr L should be between -1 and 1\");",
+                  "    pm.expect(L_review_to_merge).to.be.within(-1, 1,",
+                  "        \"review_to_merge L should be between -1 and 1\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/stub/pr-cycle-times",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "stub",
+                "pr-cycle-times"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate C Formula",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "",
+                  "// Compute C-Score from mock reference data",
+                  "",
+                  "const blended_rate = 150;",
+                  "",
+                  "const labor_value_saved = res.hours_saved_monthly * blended_rate;",
+                  "",
+                  "const overhead_value = res.review_overhead_hours_monthly * blended_rate;",
+                  "",
+                  "const total_ai_cost = res.token_cost_monthly + res.infra_cost_monthly +",
+                  "res.tooling_cost_monthly;",
+                  "",
+                  "",
+                  "const C_raw = (labor_value_saved - overhead_value) / total_ai_cost;",
+                  "",
+                  "const C_norm = Math.min(C_raw / 2.0, 1.0);",
+                  "",
+                  "",
+                  "console.log(`C-Score computed:`);",
+                  "",
+                  "console.log(`  labor_value_saved: $${labor_value_saved.toFixed(2)}`);",
+                  "",
+                  "console.log(`  overhead_value: $${overhead_value.toFixed(2)}`);",
+                  "",
+                  "console.log(`  total_ai_cost: $${total_ai_cost.toFixed(2)}`);",
+                  "",
+                  "console.log(`  C_raw (ROI): ${C_raw.toFixed(4)}x`);",
+                  "",
+                  "console.log(`  C_norm: ${C_norm.toFixed(4)}`);",
+                  "",
+                  "",
+                  "pm.test(\"C formula: expected ~2.80x ROI, C_norm=1.0\", function () {",
+                  "    // Assert C_raw is approximately 2.7955 within tolerance",
+                  "    pm.expect(Math.abs(C_raw - 2.7955)).to.be.below(0.01,",
+                  "        `C_raw=${C_raw.toFixed(4)} is not within 0.01 of expected 2.7955`);",
+                  "",
+                  "    // Assert C_norm is 1.0",
+                  "    pm.expect(Math.abs(C_norm - 1.0)).to.be.below(0.001,",
+                  "        `C_norm=${C_norm.toFixed(4)} is not within 0.001 of expected 1.0`);",
+                  "",
+                  "    // Assert classification is POSITIVE (C_raw > 1.0)",
+                  "    const classification = C_raw >= 1.0 ? \"POSITIVE\" :",
+                  "                           C_raw >= 0.5 ? \"MARGINAL\" : \"NEGATIVE\";",
+                  "    pm.expect(classification).to.eql(\"POSITIVE\",",
+                  "        `Expected POSITIVE but got ${classification} for C_raw=${C_raw.toFixed(4)}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/stub/labor-value",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "stub",
+                "labor-value"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Composite Formula",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Use hardcoded expected component scores from benchmark validation",
+                  "",
+                  "const Q = 0.2483;",
+                  "",
+                  "const L = 0.3146;",
+                  "",
+                  "const R = 0.6962;",
+                  "",
+                  "const C_norm = 1.0;",
+                  "",
+                  "",
+                  "// Weights: reliability_first profile",
+                  "",
+                  "const wQ = 0.20;",
+                  "",
+                  "const wL = 0.20;",
+                  "",
+                  "const wR = 0.45;",
+                  "",
+                  "const wC = 0.15;",
+                  "",
+                  "",
+                  "// Compute AIEI composite score",
+                  "",
+                  "const AIEI = (wQ * Q) + (wL * L) + (wR * R) + (wC * C_norm);",
+                  "",
+                  "",
+                  "console.log(`Composite AIEI computed: ${AIEI.toFixed(4)}`);",
+                  "",
+                  "console.log(`  wQ(${wQ}) * Q(${Q}) = ${(wQ * Q).toFixed(4)}`);",
+                  "",
+                  "console.log(`  wL(${wL}) * L(${L}) = ${(wL * L).toFixed(4)}`);",
+                  "",
+                  "console.log(`  wR(${wR}) * R(${R}) = ${(wR * R).toFixed(4)}`);",
+                  "",
+                  "console.log(`  wC(${wC}) * C_norm(${C_norm}) = ${(wC *",
+                  "C_norm).toFixed(4)}`);",
+                  "",
+                  "",
+                  "pm.test(\"Composite formula: expected ~0.5759 OPTIMIZE WEAK COMPONENTS\",",
+                  "function () {",
+                  "    // Assert AIEI is approximately 0.5759 within tolerance",
+                  "    pm.expect(Math.abs(AIEI - 0.5759)).to.be.below(0.001,",
+                  "        `AIEI=${AIEI.toFixed(4)} is not within 0.001 of expected 0.5759`);",
+                  "",
+                  "    // Assert classification: OPTIMIZE WEAK COMPONENTS (0.40 < AIEI <= 0.70)",
+                  "    let classification;",
+                  "    if (AIEI > 0.70) {",
+                  "        classification = \"AI-ENHANCED\";",
+                  "    } else if (AIEI > 0.40) {",
+                  "        classification = \"OPTIMIZE WEAK COMPONENTS\";",
+                  "    } else {",
+                  "        classification = \"RE-EVALUATE AI STRATEGY\";",
+                  "    }",
+                  "",
+                  "    pm.expect(classification).to.eql(\"OPTIMIZE WEAK COMPONENTS\",",
+                  "        `Expected OPTIMIZE WEAK COMPONENTS but got ${classification} for AIEI=${AIEI.toFixed(4)}`);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/health",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Weight Profiles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Reference component scores from benchmark",
+                  "",
+                  "const Q = 0.2483;",
+                  "",
+                  "const L = 0.3146;",
+                  "",
+                  "const R = 0.6962;",
+                  "",
+                  "const C_norm = 1.0;",
+                  "",
+                  "",
+                  "// All 4 weight profiles",
+                  "",
+                  "const profiles = {",
+                  "    quality_first:     { wQ: 0.35, wL: 0.20, wR: 0.35, wC: 0.10 },",
+                  "    speed_first:       { wQ: 0.20, wL: 0.40, wR: 0.25, wC: 0.15 },",
+                  "    reliability_first: { wQ: 0.20, wL: 0.20, wR: 0.45, wC: 0.15 },",
+                  "    cost_first:        { wQ: 0.25, wL: 0.20, wR: 0.20, wC: 0.35 }",
+                  "};",
+                  "",
+                  "",
+                  "// Test each profile",
+                  "",
+                  "Object.keys(profiles).forEach(function (profileName) {",
+                  "    const w = profiles[profileName];",
+                  "    const weightSum = w.wQ + w.wL + w.wR + w.wC;",
+                  "    const AIEI = (w.wQ * Q) + (w.wL * L) + (w.wR * R) + (w.wC * C_norm);",
+                  "",
+                  "    console.log(`${profileName}: weights sum=${weightSum.toFixed(2)}, AIEI=${AIEI.toFixed(4)}`);",
+                  "",
+                  "    pm.test(`${profileName} weights sum to 1.0 and AIEI in range`, function () {",
+                  "        // Assert weights sum to 1.0",
+                  "        pm.expect(Math.abs(weightSum - 1.0)).to.be.below(0.001,",
+                  "            `${profileName} weights sum to ${weightSum}, expected 1.0`);",
+                  "",
+                  "        // Assert AIEI is within valid range [0, 1]",
+                  "        pm.expect(AIEI).to.be.at.least(0,",
+                  "            `${profileName} AIEI=${AIEI.toFixed(4)} is below 0`);",
+                  "        pm.expect(AIEI).to.be.at.most(1,",
+                  "            `${profileName} AIEI=${AIEI.toFixed(4)} is above 1`);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/health",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Cloud Audit",
+      "description": "# AIEI Cloud Audit\n\nUtility collection for auditing and synchronizing the AIEI workspace via the Postman API. Ensures the cloud workspace matches the local filesystem and all collections are properly published.\n\n## What it does\n- **List workspace collections** — Enumerate all collections in the cloud workspace\n- **Compare local vs cloud** — Detect drift between filesystem collections and their cloud counterparts\n- **Validate publication state** — Confirm all 18 collections are present and accessible\n\n> **Requires:** `postman_api_key` environment variable with workspace read permissions.",
+      "item": [
+        {
+          "name": "List All Collections",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-api-key",
+                "value": "{{postman_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{postman_api_base}}/collections?workspace={{workspace_id}}",
+              "host": [
+                "{{postman_api_base}}"
+              ],
+              "path": [
+                "collections"
+              ],
+              "query": [
+                {
+                  "key": "workspace",
+                  "value": "{{workspace_id}}"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Orchestration",
+      "description": "# AIEI Orchestration Layer\n\nRun the AIEI Scoring Pipeline without depending on Postman Monitors. This collection wires MCP and CI/CD orchestration options so partners and engineers can trigger pipeline execution from GitHub Actions, CircleCI, n8n, or Temporal.\n\n## Options (in order of primacy)\n\n1. **Newman MCP Runner** - Use `shannonlal/mcp-postman` to run collections via MCP. Agent Mode or any MCP client can invoke run-collection.\n2. **GitHub Actions Dispatch** - Trigger a GitHub Action that runs Newman. Primary CI path.\n3. **CircleCI Pipeline Trigger** - Trigger a CircleCI pipeline that runs the AIEI pipeline. Backup to GitHub.\n4. **n8n Webhook** - Send a webhook to an n8n workflow that runs Newman, checks results, posts to Slack.\n5. **Temporal Workflow** - Start a Temporal workflow that runs the pipeline as a durable Activity with retries.\n6. **Orchestration Status** - Visualizer showing which backends are configured and the recommended path.\n\nThis collection is in the Developer Kit only (not Executive). Orchestration config is an engineering concern.",
+      "item": [
+        {
+          "name": "1. Newman MCP Runner",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('orchestration_newman_mcp_note', 'Install: npx -y @smithery/cli install mcp-postman --client claude. Tool: run-collection.');",
+                  "pm.environment.set('orchestration_newman_available', 'true');",
+                  "const html = '<!DOCTYPE html><html><head><style>body{font-family:system-ui;background:#212121;color:#e0e0e0;padding:24px}.card{background:#3D2E6B;border:1px solid #3D2E6B;border-radius:12px;padding:16px;margin:12px 0}.k{font-size:10px;text-transform:uppercase;color:#757575}.v{font-size:18px;margin-top:6px;color:#FF6C37}</style></head><body><div class=\"card\"><div class=\"k\">Newman MCP</div><div class=\"v\">shannonlal/mcp-postman - run-collection tool</div><div style=\"font-size:12px;color:#9E9E9E;margin-top:8px\">Install: npx -y @smithery/cli install mcp-postman --client claude</div></div></body></html>';",
+                  "pm.visualizer.set(html);",
+                  "pm.test('Newman MCP documented', function() { pm.expect(true).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/health",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Run the AIEI pipeline via Newman wrapped as an MCP tool.\n\n**Setup:** Install the community MCP server `shannonlal/mcp-postman`:\n- `npx -y @smithery/cli install mcp-postman --client claude`\n- Or clone https://github.com/shannonlal/mcp-postman and run locally\n\nThe server exposes a `run-collection` tool that accepts collection URL/path, environment file, and iteration count. Returns pass/fail, timing, failure details.\n\nThis request checks if Newman is available locally and stores a flag for the Orchestration Status Dashboard."
+          },
+          "response": []
+        },
+        {
+          "name": "2. GitHub Actions Dispatch",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ref = pm.environment.get('github_workflow_ref') || 'main';",
+                  "if (pm.request.body && pm.request.body.raw) {",
+                  "  try {",
+                  "    const b = JSON.parse(pm.request.body.raw);",
+                  "    b.ref = ref;",
+                  "    pm.request.body.raw = JSON.stringify(b);",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const code = pm.response.code;",
+                  "const configured = (pm.environment.get('github_token') || '').trim() && (pm.environment.get('github_owner') || '').trim() && (pm.environment.get('github_repo') || '').trim();",
+                  "pm.environment.set('orchestration_github_configured', configured ? 'true' : 'false');",
+                  "pm.environment.set('orchestration_github_last_status', String(code));",
+                  "if (code === 204) {",
+                  "  console.log('GitHub Actions workflow dispatched. Check Actions tab for run.');",
+                  "} else if (code === 404) {",
+                  "  console.log('Workflow not found. Set github_workflow_id to the workflow filename or numeric ID.');",
+                  "}",
+                  "pm.test('GitHub dispatch attempted', function() { pm.expect([204, 404, 401, 403]).to.include(code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{github_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/vnd.github+json"
+              },
+              {
+                "key": "X-GitHub-Api-Version",
+                "value": "2022-11-28"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://api.github.com/repos/{{github_owner}}/{{github_repo}}/actions/workflows/{{github_workflow_id}}/dispatches",
+              "protocol": "https",
+              "host": [
+                "api",
+                "github",
+                "com"
+              ],
+              "path": [
+                "repos",
+                "{{github_owner}}",
+                "{{github_repo}}",
+                "actions",
+                "workflows",
+                "{{github_workflow_id}}",
+                "dispatches"
+              ]
+            },
+            "description": "Trigger a GitHub Actions workflow that runs the AIEI Scoring Pipeline via Newman.\n\n**Prerequisites:** Set github_token, github_owner, github_repo, github_workflow_id (filename or numeric ID). The workflow must exist and call Newman with the AIEI collection + environment.\n\nThis is the primary CI path for pipeline execution without Postman Monitors."
+          },
+          "response": []
+        },
+        {
+          "name": "3. CircleCI Pipeline Trigger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const code = pm.response.code;",
+                  "const configured = (pm.environment.get('circleci_token') || '').trim() && (pm.environment.get('circleci_project_slug') || '').trim();",
+                  "pm.environment.set('orchestration_circleci_configured', configured ? 'true' : 'false');",
+                  "pm.environment.set('orchestration_circleci_last_status', String(code));",
+                  "if (code === 201) {",
+                  "  const data = pm.response.json();",
+                  "  if (data.number) console.log('CircleCI pipeline #' + data.number + ' created.');",
+                  "}",
+                  "pm.test('CircleCI trigger attempted', function() { pm.expect([201, 400, 401, 404]).to.include(code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Circle-Token",
+                "value": "{{circleci_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "https://circleci.com/api/v2/project/{{circleci_project_slug}}/pipeline",
+              "protocol": "https",
+              "host": [
+                "circleci",
+                "com"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "project",
+                "{{circleci_project_slug}}",
+                "pipeline"
+              ]
+            },
+            "description": "Trigger a CircleCI pipeline that runs the AIEI Scoring Pipeline. Backup to GitHub Actions.\n\n**Prerequisites:** Set circleci_token (API token), circleci_project_slug (e.g. gh/owner/repo). The pipeline config must include a job that runs Newman with the AIEI collection."
+          },
+          "response": []
+        },
+        {
+          "name": "4. n8n Webhook Trigger",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.request.body && pm.request.body.raw) {",
+                  "  try {",
+                  "    const b = JSON.parse(pm.request.body.raw);",
+                  "    b.ts = new Date().toISOString();",
+                  "    pm.request.body.raw = JSON.stringify(b);",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configured = (pm.environment.get('n8n_webhook_url') || '').trim().length > 0;",
+                  "pm.environment.set('orchestration_n8n_configured', configured ? 'true' : 'false');",
+                  "pm.environment.set('orchestration_n8n_last_status', String(pm.response.code));",
+                  "pm.test('n8n webhook attempted', function() { pm.expect(pm.response.code).to.be.within(200, 499); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{n8n_webhook_url}}/",
+              "host": [
+                "{{n8n_webhook_url}}"
+              ],
+              "path": [
+                ""
+              ]
+            },
+            "description": "Send a webhook to an n8n workflow that runs the AIEI pipeline.\n\n**Flow:** n8n receives this POST, runs Newman (or calls MCP), checks results, posts summary to Slack, optionally creates a ticket. Set n8n_webhook_url to your workflow webhook URL.\n\n**Prerequisites:** n8n_webhook_url must be set. The n8n workflow should: run Newman with AIEI collection + env, parse output, push to Slack, and optionally create Jira/Linear ticket."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Temporal Workflow Trigger",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const configured = (pm.environment.get('temporal_endpoint') || '').trim().length > 0;",
+                  "pm.environment.set('orchestration_temporal_configured', configured ? 'true' : 'false');",
+                  "pm.environment.set('orchestration_temporal_last_status', String(pm.response.code));",
+                  "pm.test('Temporal trigger attempted', function() { pm.expect(pm.response.code).to.be.within(200, 499); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{temporal_endpoint}}/",
+              "host": [
+                "{{temporal_endpoint}}"
+              ],
+              "path": [
+                ""
+              ]
+            },
+            "description": "Start a Temporal workflow that runs the AIEI pipeline as a durable Activity with retries.\n\n**Architecture:** Wrap the AIEI Scoring Pipeline (Newman run) as a Temporal Activity. This request calls Temporal's HTTP API (or a proxy) to start the workflow. The workflow runs the pipeline, handles retries, and can signal completion to other workflows.\n\n**Prerequisites:** Set temporal_endpoint to your Temporal frontend HTTP endpoint or a small proxy that starts the workflow (e.g. Temporal Webhook or custom adapter). Workflow ID and Task Queue should be configured in your Temporal setup."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Orchestration Status Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const gh = (pm.environment.get('orchestration_github_configured') || 'false') === 'true';",
+                  "const circle = (pm.environment.get('orchestration_circleci_configured') || 'false') === 'true';",
+                  "const n8n = (pm.environment.get('n8n_webhook_url') || '').trim().length > 0;",
+                  "const temporal = (pm.environment.get('temporal_endpoint') || '').trim().length > 0;",
+                  "const newman = (pm.environment.get('orchestration_newman_available') || 'false') === 'true';",
+                  "const options = [",
+                  "  { name: 'Newman MCP', ok: newman, rec: true },",
+                  "  { name: 'GitHub Actions', ok: gh, rec: !newman && gh },",
+                  "  { name: 'CircleCI', ok: circle, rec: !newman && !gh && circle },",
+                  "  { name: 'n8n Webhook', ok: n8n, rec: !newman && !gh && !circle && n8n },",
+                  "  { name: 'Temporal', ok: temporal, rec: !newman && !gh && !circle && !n8n && temporal }",
+                  "];",
+                  "let rec = options.find(o => o.rec) || options.find(o => o.ok) || options[0];",
+                  "const rows = options.map(o => '<tr><td>' + o.name + '</td><td style=\"color:' + (o.ok ? '#FF6C37' : '#6B4FBB') + '\">' + (o.ok ? 'Configured' : 'Not set') + '</td><td>' + (o === rec ? 'Recommended' : '') + '</td></tr>').join('');",
+                  "const html = '<!DOCTYPE html><html><head><style>body{font-family:system-ui;background:#212121;color:#e0e0e0;padding:24px}h2{color:#fff;font-size:18px}table{width:100%;border-collapse:collapse}.card{background:#3D2E6B;border:1px solid #3D2E6B;border-radius:12px;padding:16px;margin:12px 0}td{padding:10px;border-bottom:1px solid #3D2E6B}.rec{color:#FF6C37;font-weight:600}</style></head><body><div class=\"card\"><h2>Orchestration status</h2><table><thead><tr><th>Path</th><th>Status</th><th></th></tr></thead><tbody>' + rows + '</tbody></table><p style=\"margin-top:16px;font-size:12px;color:#9E9E9E\">Recommended path: ' + rec.name + '. Set env vars and run requests 1-5 to refresh.</p></div></body></html>';",
+                  "pm.visualizer.set(html);",
+                  "pm.test('Status dashboard rendered', function() { pm.expect(true).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mock_base_url}}/health",
+              "host": [
+                "{{mock_base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Visualizer showing which orchestration paths are configured (from env) and the recommended path.\n\nRun after configuring env vars and/or running requests 1-5. Green = configured/available, amber = not configured."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

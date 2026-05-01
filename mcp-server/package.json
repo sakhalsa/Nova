@@ -1,0 +1,28 @@
+{
+  "name": "@sachsk23/aiei-mcp",
+  "version": "1.6.0",
+  "description": "AIEI MCP Server - expose AI effectiveness scoring as MCP tools for coding agents",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": { "aiei-mcp": "./dist/server.js" },
+  "files": ["dist/"],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js --stdio",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["postman", "aiei", "mcp", "model-context-protocol", "ai-effectiveness"],
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "publishConfig": { "registry": "https://registry.npmjs.org/", "access": "public" },
+  "repository": { "type": "git", "url": "https://github.com/postmanlabs/AIEI-Framework.git", "directory": "mcp-server" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@sachsk23/aiei-engine": "1.5.0",
+    "@sachsk23/aiei-templates": "1.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  }
+}

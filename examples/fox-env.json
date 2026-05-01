@@ -1,0 +1,22 @@
+{
+  "orgName": "fox-entertainment",
+  "weightProfile": "reliability_first",
+  "connectors": {
+    "github": {
+      "token": "$GITHUB_TOKEN",
+      "org": "fox-entertainment",
+      "repos": []
+    },
+    "postman": {
+      "apiKey": "$POSTMAN_API_KEY",
+      "workspaceId": "REPLACE_WITH_FOX_WORKSPACE_ID"
+    },
+    "grafana": {
+      "baseUrl": "REPLACE_WITH_GRAFANA_URL",
+      "apiToken": "$GRAFANA_API_TOKEN"
+    },
+    "crunch42": {
+      "apiToken": "$CRUNCH42_TOKEN"
+    }
+  }
+}

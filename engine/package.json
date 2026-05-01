@@ -1,0 +1,60 @@
+{
+  "name": "@sachsk23/aiei-engine",
+  "version": "1.5.0",
+  "description": "AIEI scoring engine - formulas, connectors, signal routing, epistemic model, presentation layer",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./scoring": {
+      "types": "./dist/scorer.d.ts",
+      "import": "./dist/scorer.js"
+    },
+    "./connectors": {
+      "types": "./dist/connectors/registry.d.ts",
+      "import": "./dist/connectors/registry.js"
+    },
+    "./presentation": {
+      "types": "./dist/presentation.d.ts",
+      "import": "./dist/presentation.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "openapi.yaml",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "tsx src/__tests__/scorer.test.ts && tsx src/__tests__/simulate.test.ts && tsx src/__tests__/connector-contract.test.ts && tsx src/__tests__/formula-version.test.ts && tsx src/__tests__/v150-ax-level-up.test.ts",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/postmanlabs/AIEI-Framework.git",
+    "directory": "engine"
+  },
+  "license": "MIT",
+  "keywords": ["aiei", "postman", "api", "scoring", "mcp", "openapi", "dora", "ai-effectiveness"],
+  "optionalDependencies": {
+    "@turbopuffer/turbopuffer": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.11.0"
+  }
+}

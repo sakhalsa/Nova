@@ -1,0 +1,31 @@
+{
+  "name": "@sachsk23/aiei-templates",
+  "version": "1.5.0",
+  "description": "AIEI HTML report templates in Postman v12 design language",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist/"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "engines": { "node": ">=18" },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/postmanlabs/AIEI-Framework.git",
+    "directory": "templates"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@sachsk23/aiei-engine": "1.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  }
+}

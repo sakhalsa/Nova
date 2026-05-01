@@ -1,0 +1,1778 @@
+openapi: 3.1.0
+info:
+  title: AIEI - AI Effectiveness & Efficiency Index
+  version: 1.3.0
+  description: |
+    Postman's AIEI measures the effectiveness and efficiency of AI-assisted software development
+    across four core dimensions (Quality, Lead Time, Reliability, Cost) with an optional Security
+    supplemental layer.
+
+    **Not in scope:** public **documentation website** "agent readiness" (e.g. crawlability, `llms.txt`
+    on your docs portal, markdown negotiation for a site, MCP Server Card discovery, robots.txt AI
+    training directives). Those are separate from this API. See `THESIS.md` for what AIEI is and is not.
+
+    The scoring model is multiplicative on a 0-1 scale: any factor scoring zero in a dimension
+    drives that dimension to zero. Weight profiles control dimension emphasis in the composite
+    score and are Postman-controlled to ensure cross-customer comparability.
+
+    ## Scoring Model
+
+    - **Q (Quality)**: `(1 - defect_rate_ai/baseline) * ai_test_pass_rate * (1 - rework_rate_ai)` (strict); portfolio mode compares defect rate to published industry priors
+    - **L (Lead Time)**: `1 - (cycle_time_ai / cycle_time_baseline)`
+    - **R (Reliability)**: `(1 - cfr) * slo * contract_catch * uptime * adaptability`
+    - **C (Cost)**: `min((labor_saved - overhead) / total_ai_cost / target_roi, 1.0)`
+    - **S (Security)**: `spec_score * dependabot * code_scanning` (supplemental, independent)
+    - **Composite**: Weighted sum of QLRC only. S never enters composite.
+
+    ## Calibration
+
+    Q and L require baselines. First run captures baselines; second run produces comparative scores.
+    Industry defaults (DORA 2024 medians) are available as an alternative.
+
+    ## Connectors
+
+    21 data source connectors across 4 tiers feed signals into the scoring formulas.
+    Signal collisions are resolved via priority chains defined in the connector registry.
+  contact:
+    name: Postman AIEI
+    url: https://postman.com
+  license:
+    name: UNLICENSED
+
+servers:
+  - url: http://localhost:3210
+    description: Local AIEI server
+
+paths:
+  /:
+    get:
+      operationId: getServiceInfo
+      summary: Service metadata and endpoint list
+      responses:
+        '200':
+          description: Service info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInfo'
+
+  /v1/defaults:
+    get:
+      operationId: getIndustryDefaults
+      summary: Default industry baseline values (DORA / portfolio priors)
+      responses:
+        '200':
+          description: Default baselines
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /v1/assess:
+    post:
+      operationId: runAssessment
+      summary: Run a full AIEI assessment
+      description: |
+        Validates configured connectors, collects signals in parallel, merges via priority chains,
+        scores all dimensions, computes the weighted composite, and writes to local history.
+        Returns the full assessment result including validation status, dimension scores, and diagnostics.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvironmentConfig'
+      responses:
+        '200':
+          description: Assessment completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentResponse'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/validate:
+    post:
+      operationId: validateConfig
+      summary: Validate connector configuration without running assessment
+      description: |
+        Tests connectivity for all configured connectors in parallel. Returns coverage map,
+        warnings, S-score availability, and cost source detection. Use this to verify setup
+        before committing to a full assessment run.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvironmentConfig'
+      responses:
+        '200':
+          description: Validation complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+
+  /v1/report:
+    post:
+      operationId: generateReport
+      summary: Generate a formatted report from assessment results
+      description: |
+        Takes a CompositeResult (from a previous assessment) and renders it in the requested format.
+        Supports JSON, plain text summary, and styled HTML output. Includes narrative profile quotes,
+        calibration notices, and gap analysis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [result, format]
+              properties:
+                result:
+                  $ref: '#/components/schemas/CompositeResult'
+                format:
+                  type: string
+                  enum: [json, summary, html]
+                  description: Optional; defaults to summary when omitted
+                narrativeProfile:
+                  $ref: '#/components/schemas/NarrativeProfile'
+      responses:
+        '200':
+          description: Rendered report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report:
+                    type: string
+                    description: Rendered report content
+                  format:
+                    type: string
+            text/plain:
+              schema:
+                type: string
+            text/html:
+              schema:
+                type: string
+
+  /v1/dimensions:
+    get:
+      operationId: listDimensions
+      summary: List all AIEI dimensions with explanations
+      description: |
+        Returns metadata for all five dimensions including the question each answers,
+        methodology, calibration behavior, and what you lose without it.
+      responses:
+        '200':
+          description: Dimension information
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/DimensionInfo'
+
+  /v1/dimensions/{dimension}:
+    get:
+      operationId: getDimension
+      summary: Get information for a specific dimension
+      parameters:
+        - name: dimension
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Dimension'
+      responses:
+        '200':
+          description: Dimension information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionInfo'
+        '404':
+          description: Dimension not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/weights:
+    get:
+      operationId: listWeightProfiles
+      summary: List all available weight profiles
+      description: |
+        Returns the five Postman-defined weight profiles with their QLRC weights and rationales.
+        Custom weight profiles are not supported - contact your Postman representative for
+        organization-specific calibration.
+      responses:
+        '200':
+          description: Weight profiles
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/WeightProfile'
+
+  /v1/weights/{profile}:
+    get:
+      operationId: getWeightProfile
+      summary: Get a specific weight profile
+      parameters:
+        - name: profile
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/WeightProfileName'
+      responses:
+        '200':
+          description: Weight profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightProfile'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/connectors:
+    get:
+      operationId: listConnectors
+      summary: List all available connectors with their dimensions and requirements
+      responses:
+        '200':
+          description: Connector metadata
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConnectorMetadata'
+
+  /v1/history:
+    get:
+      operationId: getHistory
+      summary: Get local assessment history
+      description: Returns all stored assessment records from the local history file.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: orgName
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assessment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScoreRecord'
+
+  /v1/simulate:
+    post:
+      operationId: simulateAssessment
+      summary: Counterfactual "what-if" scoring
+      description: |
+        Pass an existing CompositeResult with hypothetical signal overrides to see how the score
+        would change without re-running connectors. Answers questions like "what would our score
+        look like if CFR dropped to 1%?" or "how much does fixing test pass rate matter?"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimulationRequest'
+      responses:
+        '200':
+          description: Simulation results with deltas and interpretation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimulationResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/diff:
+    post:
+      operationId: diffAssessments
+      summary: Compare two historical assessment runs
+      description: |
+        Compares any two assessment runs from local history. Use "latest" and "previous" as
+        aliases, or pass integer indices or record IDs. Returns per-dimension diffs, signal-level
+        changes with directional interpretation, connector adds/removes, and a composite
+        interpretation string.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [runA, runB]
+              properties:
+                runA:
+                  type: string
+                  description: Record reference - "latest", "previous", integer index, or record ID
+                runB:
+                  type: string
+                  description: Record reference - "latest", "previous", integer index, or record ID
+                configPath:
+                  type: string
+                  description: Path to config file (for locating history)
+      responses:
+        '200':
+          description: Assessment diff with interpretation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentDiff'
+        '400':
+          description: Invalid request or insufficient history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/connectors/contracts:
+    get:
+      operationId: listConnectorContracts
+      summary: List all connector contracts (built-in and runtime)
+      description: |
+        Returns the formal contract for every connector - built-in and runtime-registered.
+        Each contract declares signals produced, value ranges, confidence requirements, and
+        required credentials.
+      responses:
+        '200':
+          description: All connector contracts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ConnectorContract'
+
+  /v1/connectors/{name}/contract:
+    get:
+      operationId: getConnectorContract
+      summary: Get a specific connector's contract
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connector contract
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectorContract'
+        '404':
+          description: Connector not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/connectors/register:
+    post:
+      operationId: registerRuntimeConnector
+      summary: Register a custom connector with a formal contract
+      description: |
+        Registers a runtime connector that meets the ConnectorContract specification.
+        The connector becomes available for signal routing alongside built-in connectors.
+        If the name shadows a built-in, the built-in retains priority in signal routing
+        unless explicitly overridden.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contract]
+              properties:
+                contract:
+                  $ref: '#/components/schemas/ConnectorContract'
+      responses:
+        '200':
+          description: Registration result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registered:
+                    type: boolean
+                  contract:
+                    $ref: '#/components/schemas/ConnectorContract'
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+        '400':
+          description: Invalid contract
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /v1/formula:
+    get:
+      operationId: getCurrentFormula
+      summary: Current scoring formula version with explicit formulas and signal keys
+      description: |
+        Returns the current formula version, including human-readable formulas for each
+        dimension, the signal keys each formula consumes, changelog, and migration status.
+        Every formula is falsifiable - a customer can read the formula, check the inputs,
+        verify the output.
+      responses:
+        '200':
+          description: Current formula version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormulaVersion'
+
+  /v1/formula/history:
+    get:
+      operationId: getFormulaHistory
+      summary: All formula versions
+      responses:
+        '200':
+          description: Formula version history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FormulaVersion'
+
+  /v1/migrate:
+    post:
+      operationId: migrateResult
+      summary: Re-score an old CompositeResult under current or target formula
+      description: |
+        Takes an existing CompositeResult (from a previous assessment) and re-scores it
+        using the current (or specified) formula version. Reports which signals were preserved,
+        which were lost, and any warnings about the migration. Ensures historical comparability
+        when formulas evolve.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MigrationRequest'
+      responses:
+        '200':
+          description: Migration result with original and re-scored dimensions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MigrationResult'
+        '400':
+          description: Invalid request or unknown target formula
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ServiceInfo:
+      type: object
+      required: [name, version, schemaVersion, endpoints]
+      properties:
+        name:
+          type: string
+          example: '@postmanlabs/aiei-core'
+        version:
+          type: string
+          description: npm package release version
+        schemaVersion:
+          type: string
+          description: Matches CompositeResult.schemaVersion / SCHEMA_VERSION for assessment JSON
+        endpoints:
+          type: array
+          items:
+            type: string
+          description: HTTP routes served by aiei-server (11 path patterns)
+
+    Dimension:
+      type: string
+      enum: [Q, L, R, C, S]
+      description: |
+        Q=Quality, L=Lead Time, R=Reliability, C=Cost Efficiency, S=Security Posture.
+        QLRC are core dimensions that feed the composite. S is supplemental.
+
+    WeightProfileName:
+      type: string
+      enum: [reliability_first, balanced, quality_first, speed_first, cost_first]
+
+    DimensionStatus:
+      type: string
+      enum: [scored, calibrating, unavailable]
+
+    DimensionWeights:
+      type: object
+      required: [q, l, r, c]
+      properties:
+        q:
+          type: number
+          minimum: 0
+          maximum: 1
+        l:
+          type: number
+          minimum: 0
+          maximum: 1
+        r:
+          type: number
+          minimum: 0
+          maximum: 1
+        c:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    WeightProfile:
+      type: object
+      required: [name, weights, rationale]
+      properties:
+        name:
+          $ref: '#/components/schemas/WeightProfileName'
+        weights:
+          $ref: '#/components/schemas/DimensionWeights'
+        rationale:
+          type: string
+
+    DimensionInfo:
+      type: object
+      required: [key, name, core, question, explanation, withoutIt, calibrating, methodology]
+      properties:
+        key:
+          $ref: '#/components/schemas/Dimension'
+        name:
+          type: string
+        core:
+          type: boolean
+        question:
+          type: string
+          description: The business question this dimension answers
+        explanation:
+          type: string
+          description: What this dimension measures and how
+        withoutIt:
+          type: string
+          description: What you cannot answer without this dimension
+        calibrating:
+          type: string
+          description: Message shown when this dimension is in calibration mode
+        methodology:
+          type: string
+          description: Technical formula and approach
+
+    NarrativeProfile:
+      type: object
+      properties:
+        name:
+          type: string
+        quotes:
+          type: object
+          additionalProperties:
+            type: string
+
+    SignalResult:
+      type: object
+      required: [key, value, source]
+      properties:
+        key:
+          type: string
+        value:
+          type: number
+        source:
+          type: string
+          enum: [live, fallback, manual, calibration]
+        connector:
+          type: string
+
+    DimensionScore:
+      type: object
+      required: [dimension, score, status, signals, connectorsSourcing]
+      properties:
+        dimension:
+          $ref: '#/components/schemas/Dimension'
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        status:
+          $ref: '#/components/schemas/DimensionStatus'
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/SignalResult'
+        connectorsSourcing:
+          type: array
+          items:
+            type: string
+        calibrationMessage:
+          type: string
+        dataQuality:
+          type: string
+          enum: [high, medium, low]
+          description: Aggregate confidence for signals feeding this dimension
+
+    ProductDomainTopicId:
+      type: string
+      enum: [identity, streaming, contract_drift]
+
+    ProductDomainTopic:
+      type: object
+      required:
+        [id, title, inProduct, notCovered, connectorsThatHelp, suggestedNextStep]
+      properties:
+        id:
+          $ref: '#/components/schemas/ProductDomainTopicId'
+        title:
+          type: string
+        inProduct:
+          type: string
+          description: What to show in-product when this concern comes up
+        notCovered:
+          type: string
+          description: Honest limit of what the AIEI score does not claim
+        connectorsThatHelp:
+          type: array
+          items:
+            type: string
+          description: Connector keys (e.g. postman, github, datadog) that partially address this topic
+        suggestedNextStep:
+          type: string
+
+    ProductDomainGuidance:
+      type: object
+      required: [intro, whenThisApplies, topics]
+      properties:
+        intro:
+          type: string
+        whenThisApplies:
+          type: string
+        topics:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductDomainTopic'
+        readinessHint:
+          type: string
+          description: Extra line when assessment is in readiness or few core dimensions scored
+
+    ConnectorSetupHint:
+      type: object
+      required: [connector, configured, connected, nextFix]
+      properties:
+        connector:
+          type: string
+        configured:
+          type: boolean
+        connected:
+          type: boolean
+        error:
+          type: string
+        nextFix:
+          type: string
+
+    SetupGuidance:
+      type: object
+      required: [intro, connectorHints, minimalViableConnectors, configFileHint, validationReady]
+      properties:
+        intro:
+          type: string
+        connectorHints:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectorSetupHint'
+        minimalViableConnectors:
+          type: array
+          items:
+            type: string
+        configFileHint:
+          type: string
+        validationReady:
+          type: boolean
+
+    ScoreLiteracyGuidance:
+      type: object
+      required:
+        [headline, bullets, compositeInterpretation, comparability, scoringModeExplainer, supplementalSNote]
+      properties:
+        headline:
+          type: string
+        bullets:
+          type: array
+          items:
+            type: string
+        compositeInterpretation:
+          type: string
+        comparability:
+          type: string
+        scoringModeExplainer:
+          type: string
+        supplementalSNote:
+          type: string
+
+    WorkflowStep:
+      type: object
+      required: [order, label, detail]
+      properties:
+        order:
+          type: integer
+        label:
+          type: string
+        detail:
+          type: string
+
+    WorkflowGuidance:
+      type: object
+      required: [firstRun, ciOrAgent, reportFormats]
+      properties:
+        firstRun:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowStep'
+        ciOrAgent:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowStep'
+        reportFormats:
+          type: array
+          items:
+            type: object
+            required: [context, format, reason]
+            properties:
+              context:
+                type: string
+              format:
+                type: string
+                enum: [json, html, summary]
+              reason:
+                type: string
+
+    SignalHint:
+      type: object
+      required: [key, dimension, plainEnglish, improvesWith, seenInThisRun]
+      properties:
+        key:
+          type: string
+        dimension:
+          $ref: '#/components/schemas/Dimension'
+        plainEnglish:
+          type: string
+        improvesWith:
+          type: string
+        seenInThisRun:
+          type: boolean
+
+    OpsGuidance:
+      type: object
+      required: [schemaVersion, telemetryEnabled, optionalFeaturesNote, clientCompatibility]
+      properties:
+        schemaVersion:
+          type: string
+        telemetryEnabled:
+          type: boolean
+        optionalFeaturesNote:
+          type: string
+        clientCompatibility:
+          type: string
+
+    RunGuidance:
+      type: object
+      required: [productDomain, setup, scoreLiteracy, workflow, signalHints, ops]
+      properties:
+        productDomain:
+          $ref: '#/components/schemas/ProductDomainGuidance'
+        setup:
+          $ref: '#/components/schemas/SetupGuidance'
+        scoreLiteracy:
+          $ref: '#/components/schemas/ScoreLiteracyGuidance'
+        workflow:
+          $ref: '#/components/schemas/WorkflowGuidance'
+        signalHints:
+          type: array
+          items:
+            $ref: '#/components/schemas/SignalHint'
+        ops:
+          $ref: '#/components/schemas/OpsGuidance'
+
+    CompositeResult:
+      type: object
+      required:
+        [
+          schemaVersion,
+          composite,
+          dimensions,
+          weights,
+          weightProfile,
+          calibrating,
+          timestamp,
+          orgName,
+          assessmentMode,
+          scoringMode,
+          partialComposite,
+          scoredCoreCount,
+        ]
+      properties:
+        schemaVersion:
+          type: string
+        composite:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Weighted composite score across QLRC dimensions (S excluded)
+        dimensions:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DimensionScore'
+        weights:
+          $ref: '#/components/schemas/DimensionWeights'
+        weightProfile:
+          $ref: '#/components/schemas/WeightProfileName'
+        calibrating:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dimension'
+          description: Dimensions currently in calibration mode
+        weakest:
+          type: object
+          nullable: true
+          properties:
+            dimension:
+              $ref: '#/components/schemas/Dimension'
+            score:
+              type: number
+        strongest:
+          type: object
+          nullable: true
+          properties:
+            dimension:
+              $ref: '#/components/schemas/Dimension'
+            score:
+              type: number
+        gap:
+          type: number
+          description: Score difference between strongest and weakest dimensions
+        timestamp:
+          type: string
+          format: date-time
+        orgName:
+          type: string
+        assessmentMode:
+          type: string
+          enum: [full, readiness]
+          description: readiness when fewer than 3 core dimensions scored
+        scoringMode:
+          type: string
+          enum: [strict, portfolio]
+        partialComposite:
+          type: boolean
+        scoredCoreCount:
+          type: integer
+          minimum: 0
+          maximum: 4
+        productDomainGuidance:
+          $ref: '#/components/schemas/ProductDomainGuidance'
+          description: >-
+            In-product support when identity, streaming, or contract drift are raised against the score;
+            structured copy for UIs and reports (not a substitute for domain dashboards)
+        runGuidance:
+          $ref: '#/components/schemas/RunGuidance'
+          description: >-
+            Full in-product guidance (setup fixes, score literacy, agent/CI workflow, signal catalog with
+            seenInThisRun flags, ops notes, and productDomain duplicate for nested UIs)
+        epistemicNote:
+          type: string
+          description: Limitations of inference and baseline sources
+
+    ConnectorValidation:
+      type: object
+      required: [name, configured, connected, dimensions]
+      properties:
+        name:
+          type: string
+        configured:
+          type: boolean
+        connected:
+          type: boolean
+        error:
+          type: string
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dimension'
+
+    ValidationResult:
+      type: object
+      required: [orgName, weightProfile, connectors, coverage, warnings, sAvailable, sEnabled, costSource, ready]
+      properties:
+        orgName:
+          type: string
+        weightProfile:
+          $ref: '#/components/schemas/WeightProfileName'
+        connectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectorValidation'
+        coverage:
+          type: object
+          description: Map of dimension to connected connector names
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        sAvailable:
+          type: boolean
+        sEnabled:
+          type: boolean
+        costSource:
+          type: string
+          enum: [connectors, manual, none]
+        ready:
+          type: boolean
+
+    AiDetectionConfig:
+      type: object
+      properties:
+        labels:
+          type: array
+          items:
+            type: string
+          description: PR labels that indicate AI involvement
+          default: [ai-generated, ai-assisted, copilot, cursor, claude, ai]
+        branchPatterns:
+          type: array
+          items:
+            type: string
+          description: Branch name prefixes that indicate AI involvement
+          default: [copilot/, ai/, cursor/]
+        titlePatterns:
+          type: array
+          items:
+            type: string
+          description: PR title substrings that indicate AI involvement
+          default: ['[ai]', '[copilot]', '[cursor]']
+
+    GithubConfig:
+      type: object
+      required: [token, org, repos]
+      properties:
+        token:
+          type: string
+          description: GitHub Personal Access Token
+        org:
+          type: string
+          description: GitHub organization name
+        repos:
+          type: array
+          items:
+            type: string
+          description: Repository names to analyze
+        aiDetection:
+          $ref: '#/components/schemas/AiDetectionConfig'
+
+    PostmanConfig:
+      type: object
+      required: [apiKey, workspaceId]
+      properties:
+        apiKey:
+          type: string
+        workspaceId:
+          type: string
+
+    GrafanaConfig:
+      type: object
+      required: [baseUrl, apiToken]
+      properties:
+        baseUrl:
+          type: string
+        apiToken:
+          type: string
+        datasourceUid:
+          type: string
+        serviceName:
+          type: string
+        errorRateMetric:
+          type: string
+          default: http_requests_total
+        latencyMetric:
+          type: string
+          default: http_request_duration_seconds_bucket
+
+    DatadogConfig:
+      type: object
+      required: [apiKey, appKey]
+      properties:
+        apiKey:
+          type: string
+        appKey:
+          type: string
+        site:
+          type: string
+          default: datadoghq.com
+
+    SonarQubeConfig:
+      type: object
+      required: [url, token, projectKey]
+      properties:
+        url:
+          type: string
+        token:
+          type: string
+        projectKey:
+          type: string
+
+    Crunch42Config:
+      type: object
+      required: [apiToken]
+      properties:
+        apiToken:
+          type: string
+        apiBase:
+          type: string
+        specUrl:
+          type: string
+        specJson:
+          type: string
+
+    PagerDutyConfig:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+
+    CloudflareConfig:
+      type: object
+      required: [apiToken, zoneId]
+      properties:
+        apiToken:
+          type: string
+        zoneId:
+          type: string
+
+    NewRelicConfig:
+      type: object
+      required: [apiKey, appId]
+      properties:
+        apiKey:
+          type: string
+        appId:
+          type: string
+
+    SplunkConfig:
+      type: object
+      required: [signalfxToken]
+      properties:
+        signalfxToken:
+          type: string
+        signalfxRealm:
+          type: string
+          default: us1
+
+    ServiceNowConfig:
+      type: object
+      required: [instance, username, password]
+      properties:
+        instance:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+
+    VercelConfig:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+        projectId:
+          type: string
+
+    SupabaseConfig:
+      type: object
+      required: [accessToken]
+      properties:
+        accessToken:
+          type: string
+
+    GitLabConfig:
+      type: object
+      required: [token, projectId]
+      properties:
+        token:
+          type: string
+        projectId:
+          type: string
+
+    LinearConfig:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+
+    JiraConfig:
+      type: object
+      required: [domain, email, apiToken, projectKey]
+      properties:
+        domain:
+          type: string
+        email:
+          type: string
+        apiToken:
+          type: string
+        projectKey:
+          type: string
+
+    JellyfishConfig:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+
+    OpenAIConfig:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+        orgId:
+          type: string
+
+    AnthropicConfig:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+
+    GoogleAIConfig:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+
+    PortkeyConfig:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+
+    ConnectorConfigs:
+      type: object
+      description: |
+        Configuration for each data source connector. Only configure the connectors
+        you have credentials for. The assessment will use whatever is available.
+      properties:
+        github:
+          $ref: '#/components/schemas/GithubConfig'
+        postman:
+          $ref: '#/components/schemas/PostmanConfig'
+        grafana:
+          $ref: '#/components/schemas/GrafanaConfig'
+        datadog:
+          $ref: '#/components/schemas/DatadogConfig'
+        sonarqube:
+          $ref: '#/components/schemas/SonarQubeConfig'
+        crunch42:
+          $ref: '#/components/schemas/Crunch42Config'
+        pagerduty:
+          $ref: '#/components/schemas/PagerDutyConfig'
+        cloudflare:
+          $ref: '#/components/schemas/CloudflareConfig'
+        newrelic:
+          $ref: '#/components/schemas/NewRelicConfig'
+        splunk:
+          $ref: '#/components/schemas/SplunkConfig'
+        servicenow:
+          $ref: '#/components/schemas/ServiceNowConfig'
+        vercel:
+          $ref: '#/components/schemas/VercelConfig'
+        supabase:
+          $ref: '#/components/schemas/SupabaseConfig'
+        gitlab:
+          $ref: '#/components/schemas/GitLabConfig'
+        linear:
+          $ref: '#/components/schemas/LinearConfig'
+        jira:
+          $ref: '#/components/schemas/JiraConfig'
+        jellyfish:
+          $ref: '#/components/schemas/JellyfishConfig'
+        openai:
+          $ref: '#/components/schemas/OpenAIConfig'
+        anthropic:
+          $ref: '#/components/schemas/AnthropicConfig'
+        google_ai:
+          $ref: '#/components/schemas/GoogleAIConfig'
+        portkey:
+          $ref: '#/components/schemas/PortkeyConfig'
+
+    EnvironmentConfig:
+      type: object
+      required: [orgName, weightProfile, connectors]
+      properties:
+        orgName:
+          type: string
+          description: Organization name for reports and history
+        assessorName:
+          type: string
+        assessmentDate:
+          type: string
+        weightProfile:
+          $ref: '#/components/schemas/WeightProfileName'
+        connectors:
+          $ref: '#/components/schemas/ConnectorConfigs'
+        narrativeProfile:
+          $ref: '#/components/schemas/NarrativeProfile'
+        monthlyAiCost:
+          type: number
+          description: Manual fallback for monthly AI spend ($) when no cost connector is available
+        baselineDefectRate:
+          type: number
+          description: Measured non-AI defect rate (defects/KLOC) for Q baseline
+        baselineCycleTimeHours:
+          type: number
+          description: Measured non-AI cycle time (hours) for L baseline
+        baselineSource:
+          type: string
+          enum: [measured, industry]
+          description: Use "industry" to auto-fill baselines from DORA 2024 medians
+        targetRoi:
+          type: number
+          default: 2.0
+          description: Target ROI multiplier for C-score normalization
+        hourlyRate:
+          type: number
+          default: 75
+          description: Hourly developer rate ($) for labor value calculations
+        telemetry:
+          type: boolean
+          default: false
+          description: Opt-in to Postman-controlled Turbopuffer telemetry for portfolio analytics
+        sEnabled:
+          type: boolean
+          default: false
+          description: Enable Security Posture (S) supplemental scoring
+        timeoutMs:
+          type: integer
+          default: 30000
+          description: HTTP timeout for connector API calls (milliseconds)
+        scoringMode:
+          type: string
+          enum: [strict, portfolio, auto]
+          description: How Q/L baselines are chosen; auto resolves from signals and baselineSource
+
+    AssessmentResponse:
+      type: object
+      required: [validation, result, durationMs]
+      properties:
+        validation:
+          $ref: '#/components/schemas/ValidationResult'
+        result:
+          $ref: '#/components/schemas/CompositeResult'
+        durationMs:
+          type: integer
+          description: Total assessment execution time in milliseconds
+
+    ScoreRecord:
+      type: object
+      required: [id, schemaVersion, timestamp, orgName, weightProfile, composite, scores, s, calibrating, connectors, signals]
+      properties:
+        id:
+          type: string
+        schemaVersion:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        orgName:
+          type: string
+        weightProfile:
+          $ref: '#/components/schemas/WeightProfileName'
+        composite:
+          type: number
+        scores:
+          type: object
+          additionalProperties:
+            type: number
+        s:
+          type: object
+          properties:
+            configured:
+              type: boolean
+            score:
+              type: number
+              nullable: true
+        calibrating:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dimension'
+        connectors:
+          type: object
+          properties:
+            connected:
+              type: array
+              items:
+                type: string
+            failed:
+              type: array
+              items:
+                type: string
+            fallback:
+              type: array
+              items:
+                type: string
+        signals:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              value:
+                type: number
+              source:
+                type: string
+
+    ConnectorMetadata:
+      type: object
+      required: [name, dimensions, requiredCredentials]
+      properties:
+        name:
+          type: string
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dimension'
+        requiredCredentials:
+          type: array
+          items:
+            type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+
+    ProvenanceStep:
+      type: object
+      required: [signal, rawValue, normalizedValue, connector, apiEndpoint, timestamp, sampleSize, formulaPosition]
+      properties:
+        signal:
+          type: string
+        rawValue: {}
+        normalizedValue:
+          type: number
+        connector:
+          type: string
+        apiEndpoint:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        sampleSize:
+          type: integer
+        formulaPosition:
+          type: string
+          description: Shows where this signal appears in the formula (e.g. "R = (1 - THIS) * slo * ...")
+
+    SimulationRequest:
+      type: object
+      required: [baseResult, hypothetical]
+      properties:
+        baseResult:
+          $ref: '#/components/schemas/CompositeResult'
+        hypothetical:
+          type: object
+          additionalProperties:
+            type: number
+          description: Signal key overrides (e.g. { "cfr_ai": 0.01 })
+        weightProfile:
+          $ref: '#/components/schemas/WeightProfileName'
+        baselineDefectRate:
+          type: number
+        baselineCycleTimeHours:
+          type: number
+        monthlyAiCost:
+          type: number
+        targetRoi:
+          type: number
+        hourlyRate:
+          type: number
+
+    SimulationResult:
+      type: object
+      required: [original, simulated, compositeDelta, dimensionDeltas, signalOverrides, interpretation]
+      properties:
+        original:
+          type: object
+          properties:
+            composite:
+              type: number
+            dimensions:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  score:
+                    type: number
+                  status:
+                    type: string
+        simulated:
+          type: object
+          properties:
+            composite:
+              type: number
+            dimensions:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  score:
+                    type: number
+                  status:
+                    type: string
+        compositeDelta:
+          type: number
+        dimensionDeltas:
+          type: array
+          items:
+            type: object
+            properties:
+              dimension:
+                $ref: '#/components/schemas/Dimension'
+              original:
+                type: number
+              simulated:
+                type: number
+              delta:
+                type: number
+              originalStatus:
+                type: string
+              simulatedStatus:
+                type: string
+        biggestMover:
+          type: object
+          nullable: true
+          properties:
+            dimension:
+              $ref: '#/components/schemas/Dimension'
+            delta:
+              type: number
+            drivenBy:
+              type: array
+              items:
+                type: string
+        signalOverrides:
+          type: array
+          items:
+            type: object
+            properties:
+              signal:
+                type: string
+              original:
+                type: number
+                nullable: true
+              simulated:
+                type: number
+              dimension:
+                $ref: '#/components/schemas/Dimension'
+        interpretation:
+          type: string
+          description: Plain-English summary of the simulation outcome
+
+    AssessmentDiff:
+      type: object
+      required: [runA, runB, compositeA, compositeB, compositeDelta, dimensionDiffs, interpretation]
+      properties:
+        runA:
+          type: object
+          properties:
+            id:
+              type: string
+            timestamp:
+              type: string
+            orgName:
+              type: string
+        runB:
+          type: object
+          properties:
+            id:
+              type: string
+            timestamp:
+              type: string
+            orgName:
+              type: string
+        compositeA:
+          type: number
+        compositeB:
+          type: number
+        compositeDelta:
+          type: number
+        dimensionDiffs:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              dimension:
+                $ref: '#/components/schemas/Dimension'
+              scoreA:
+                type: number
+              scoreB:
+                type: number
+              delta:
+                type: number
+              statusA:
+                type: string
+              statusB:
+                type: string
+              signalChanges:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    signal:
+                      type: string
+                    valueA:
+                      type: number
+                      nullable: true
+                    valueB:
+                      type: number
+                      nullable: true
+                    delta:
+                      type: number
+                      nullable: true
+                    connector:
+                      type: string
+                    interpretation:
+                      type: string
+              connectorChanges:
+                type: object
+                properties:
+                  added:
+                    type: array
+                    items:
+                      type: string
+                  removed:
+                    type: array
+                    items:
+                      type: string
+                  unchanged:
+                    type: array
+                    items:
+                      type: string
+        modeChanged:
+          type: boolean
+        profileChanged:
+          type: boolean
+        newDimensionsScored:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dimension'
+        dimensionsLost:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dimension'
+        connectorCountDelta:
+          type: integer
+        interpretation:
+          type: string
+
+    SignalSpec:
+      type: object
+      required: [key, dimension, valueRange, unit, description]
+      properties:
+        key:
+          type: string
+        dimension:
+          $ref: '#/components/schemas/Dimension'
+        valueRange:
+          type: array
+          items:
+            type: number
+          minItems: 2
+          maxItems: 2
+        unit:
+          type: string
+          enum: [ratio, hours, dollars, count, rate]
+        description:
+          type: string
+
+    ConnectorContract:
+      type: object
+      required: [name, version, dimensions, signalsProduced, confidenceContract, requiredCredentials]
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dimension'
+        signalsProduced:
+          type: array
+          items:
+            $ref: '#/components/schemas/SignalSpec'
+        confidenceContract:
+          type: object
+          properties:
+            requiresSampleSize:
+              type: boolean
+            minimumSampleSize:
+              type: integer
+            requiresTimeWindow:
+              type: boolean
+            minimumTimeWindowDays:
+              type: integer
+        requiredCredentials:
+          type: array
+          items:
+            type: string
+        testFixture:
+          type: object
+          properties:
+            mockConfig:
+              type: object
+            expectedSignals:
+              type: object
+              additionalProperties:
+                type: number
+
+    FormulaVersion:
+      type: object
+      required: [id, schemaVersion, formulas, signalKeys, changelog, previousVersion, migrationAvailable, publishedDate]
+      properties:
+        id:
+          type: string
+        schemaVersion:
+          type: string
+        formulas:
+          type: object
+          additionalProperties:
+            type: string
+          description: Human-readable formula for each dimension
+        signalKeys:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Signal keys consumed by each dimension formula
+        changelog:
+          type: string
+        previousVersion:
+          type: string
+          nullable: true
+        migrationAvailable:
+          type: boolean
+        publishedDate:
+          type: string
+
+    MigrationRequest:
+      type: object
+      required: [result]
+      properties:
+        result:
+          $ref: '#/components/schemas/CompositeResult'
+        targetFormulaId:
+          type: string
+        baselineDefectRate:
+          type: number
+        baselineCycleTimeHours:
+          type: number
+        monthlyAiCost:
+          type: number
+        targetRoi:
+          type: number
+        hourlyRate:
+          type: number
+
+    MigrationResult:
+      type: object
+      required: [original, migrated, signalsPreserved, signalsLost, warnings, migrationNote]
+      properties:
+        original:
+          type: object
+          properties:
+            formulaId:
+              type: string
+            composite:
+              type: number
+            dimensions:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  score:
+                    type: number
+                  status:
+                    type: string
+        migrated:
+          type: object
+          properties:
+            formulaId:
+              type: string
+            composite:
+              type: number
+            dimensions:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  score:
+                    type: number
+                  status:
+                    type: string
+        signalsPreserved:
+          type: array
+          items:
+            type: string
+        signalsLost:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        migrationNote:
+          type: string

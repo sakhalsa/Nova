@@ -1,0 +1,28 @@
+{
+  "name": "@sachsk23/aiei",
+  "version": "1.6.0",
+  "description": "AIEI: AI Engineering Intelligence & Effectiveness Index - CLI",
+  "type": "module",
+  "bin": { "aiei": "./dist/cli.js" },
+  "files": ["dist/"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "npm run build && node test/cli-contract.test.mjs",
+    "prepublishOnly": "npm test"
+  },
+  "keywords": ["postman", "aiei", "ai-effectiveness", "api-quality", "engineering-metrics", "dora"],
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "publishConfig": { "registry": "https://registry.npmjs.org/", "access": "public" },
+  "repository": { "type": "git", "url": "https://github.com/postmanlabs/AIEI-Framework.git", "directory": "cli" },
+  "dependencies": {
+    "@sachsk23/aiei-engine": "1.5.0",
+    "@sachsk23/aiei-templates": "1.5.0",
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  }
+}

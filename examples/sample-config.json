@@ -1,0 +1,27 @@
+{
+  "orgName": "acme-platform",
+  "weightProfile": "reliability_first",
+  "connectors": {
+    "github": {
+      "token": "$GITHUB_TOKEN",
+      "org": "acme-platform",
+      "repos": ["api-gateway", "auth-service", "payments-api"]
+    },
+    "postman": {
+      "apiKey": "$POSTMAN_API_KEY",
+      "workspaceId": "your-workspace-id"
+    },
+    "datadog": {
+      "apiKey": "$DD_API_KEY",
+      "appKey": "$DD_APP_KEY"
+    },
+    "sonarqube": {
+      "url": "https://sonarcloud.io",
+      "token": "$SONAR_TOKEN",
+      "projectKey": "acme-platform_api-gateway"
+    },
+    "pagerduty": {
+      "apiKey": "$PAGERDUTY_TOKEN"
+    }
+  }
+}

@@ -1,0 +1,684 @@
+{
+	"info": {
+		"_postman_id": "6338821a-3085-4749-a2e1-f65b397f5000",
+		"name": "05 AIEI Mock Data Server",
+		"description": "# AIEI Mock Data Server\n\n## The Story\n\nEvery request in the AIEI framework can run against mock data. This collection defines the mock responses that power demonstrations, testing, and onboarding \u2014 making the entire framework immediately usable without any real integrations.\n\nThe mock server isn't a toy. It returns realistic, internally consistent data that exercises every scoring formula, edge case, and classification boundary. The reliability metrics produce scores in the \"Moderate\" range. The quality metrics include a non-zero rework rate. The cost data shows a positive but not spectacular ROI. This is intentional: the mock data tells the story of a typical organization, not a perfect one.\n\nEach endpoint in this collection corresponds to a data source used by the scoring collections. When you're ready to connect real data, you replace the mock URL with your actual endpoint \u2014 the request structure stays the same.\n\n## The Endpoints\n\nThis collection contains the full set of mock data endpoints organized by scoring dimension:\n\n- **Health** \u2014 Server health check\n- **Reliability metrics** \u2014 CFR, SLO compliance, uptime, contract coverage\n- **Quality metrics** \u2014 Defect rates, test pass rates, rework rates\n- **Lead time metrics** \u2014 PR cycle times, agent mode efficiency, DORA throughput\n- **Cost metrics** \u2014 Labor savings, AI costs, ROI calculations\n- **Composite data** \u2014 Pre-computed composite scores for testing\n- **Historical data** \u2014 Time-series data for trend analysis\n- **Team data** \u2014 Multi-team scores for comparison features\n- **Benchmark data** \u2014 Industry benchmarks and percentile distributions\n- **Maturity indicators** \u2014 Organizational maturity signals\n- **Contract checks** \u2014 Measurement prerequisite validation data\n- **Executive report data** \u2014 Pre-formatted report content\n\n## What Comes Next\n\u2192 Create a Postman mock server from this collection to power the entire framework\n\u2192 [01 AIEI Setup Wizard](collection/20784047-4b457cdf-dc2f-4de7-9897-9391ab615c9f) to configure the mock server URL",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "20784047"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/health",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Health Check 200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/health",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"status\": \"ok\",\n  \"server\": \"AIEI Mock Data Server\",\n  \"version\": \"0.4.0\",\n  \"endpoints\": 28,\n  \"sources\": [\n    \"github-mcp\",\n    \"sonarqube-mcp\",\n    \"datadog-mcp\",\n    \"entireio-mcp\",\n    \"dx-mcp\"\n  ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Q-Score Data (Defect Rates)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/defect-rates",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"defect-rates"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Q-Score Defects 200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/stub/defect-rates",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"defect-rates"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"defect_rate_ai\": 0.042,\n  \"defect_rate_nonai\": 0.058,\n  \"ai_test_pass_rate\": 0.91,\n  \"manual_test_pass_rate\": 0.94,\n  \"rework_rate_ai\": 0.0705,\n  \"sonarqube\": {\n    \"quality_gate\": \"A\",\n    \"bugs_ai\": 8,\n    \"bugs_nonai\": 19,\n    \"code_smells_ai\": 42,\n    \"code_smells_nonai\": 67,\n    \"vulnerabilities_ai\": 3,\n    \"vulnerabilities_nonai\": 9,\n    \"coverage_ai\": 0.82,\n    \"coverage_nonai\": 0.78\n  },\n  \"git_blame_attribution\": {\n    \"total_defects\": 47,\n    \"ai_attributed\": 13,\n    \"nonai_attributed\": 28,\n    \"unattributed\": 6,\n    \"method\": \"git-blame-llm-session-join\"\n  },\n  \"source\": \"mock\"\n}"
+				}
+			]
+		},
+		{
+			"name": "L-Score Data (PR Cycle Times)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/pr-cycle-times",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"pr-cycle-times"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "L-Score PR Cycle Data",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/stub/pr-cycle-times",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"pr-cycle-times"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"cycle_time_ai_hours\": 4.2,\n  \"cycle_time_nonai_hours\": 6.8,\n  \"stages\": {\n    \"ideation_to_pr\": {\n      \"ai_hours\": 1.8,\n      \"nonai_hours\": 3.2\n    },\n    \"review_to_merge\": {\n      \"ai_hours\": 2.4,\n      \"nonai_hours\": 3.6\n    }\n  },\n  \"sample_size\": {\n    \"ai_prs\": 87,\n    \"non_ai_prs\": 143\n  },\n  \"measurement_period\": \"2026-02-01_to_2026-03-01\",\n  \"data_source\": \"cloud-mock\"\n}"
+				}
+			]
+		},
+		{
+			"name": "R-Score Data (CFR)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/cfr",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"cfr"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "R-Score CFR Data",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/stub/cfr",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"cfr"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"cfr_ai\": 0.045,\n  \"slo_attainment\": 0.965,\n  \"contract_catch_rate\": 0.92,\n  \"uptime_ai\": 0.9987,\n  \"adaptability\": 0.88,\n  \"measurement_period\": \"2026-02-01_to_2026-03-01\",\n  \"data_source\": \"cloud-mock\",\n  \"cohort\": {\n    \"ai_deploys\": 312,\n    \"total_deploys\": 6933\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "C-Score Data (Labor Value)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/labor-value",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"labor-value"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "C-Score Labor Data",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/stub/labor-value",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"labor-value"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"hours_saved_monthly\": 162,\n  \"review_overhead_hours_monthly\": 28,\n  \"token_cost_monthly\": 2400,\n  \"infra_cost_monthly\": 800,\n  \"tooling_cost_monthly\": 1200,\n  \"labor_value_saved_monthly\": 24300,\n  \"blended_hourly_rate\": 150,\n  \"measurement_period\": \"2026-02-01_to_2026-03-01\",\n  \"data_source\": \"cloud-mock\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Q-Score Data (Test Pass Rate)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/test-pass-rate",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"test-pass-rate"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Q-Score Data (Test Pass Rate) \u2014 200 OK",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{mock_base_url}}/stub/test-pass-rate",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"test-pass-rate"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"enabled": true
+						}
+					],
+					"cookie": [],
+					"body": "{\"ai_test_pass_rate\":0.91,\"manual_test_pass_rate\":0.94,\"total_ai_tests\":1247,\"total_manual_tests\":892,\"source\":\"mock\",\"period\":\"last_30_days\"}"
+				}
+			]
+		},
+		{
+			"name": "Attribution Data",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/git/attribution",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"git",
+						"attribution"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Attribution Data \u2014 200 OK",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{mock_base_url}}/git/attribution",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"git",
+								"attribution"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"enabled": true
+						}
+					],
+					"cookie": [],
+					"body": "{\"total_commits\":312,\"ai_assisted_commits\":128,\"ai_attribution_pct\":0.4103,\"top_contributors\":[{\"author\":\"dev-a\",\"ai_pct\":0.62},{\"author\":\"dev-b\",\"ai_pct\":0.45},{\"author\":\"dev-c\",\"ai_pct\":0.31}],\"source\":\"mock\",\"period\":\"last_30_days\"}"
+				}
+			]
+		},
+		{
+			"name": "Q-Score Data (Rework Rate)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/rework-rate",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"rework-rate"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Q-Score Data (Rework Rate) \u2014 200 OK",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{mock_base_url}}/stub/rework-rate",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"rework-rate"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"enabled": true
+						}
+					],
+					"cookie": [],
+					"body": "{\"rework_rate_ai\":0.12,\"total_ai_prs\":84,\"reverted_prs\":7,\"closed_without_merge\":3,\"source\":\"mock\",\"period\":\"last_30_days\"}"
+				}
+			]
+		},
+		{
+			"name": "Cohort Stats Data",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/git/cohort-stats",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"git",
+						"cohort-stats"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Cohort Stats 200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/git/cohort-stats",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"git",
+								"cohort-stats"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"ai_cohort\": {\n    \"size\": 89,\n    \"period_days\": 14,\n    \"services\": [\n      \"payments\",\n      \"auth\",\n      \"catalog\"\n    ]\n  },\n  \"non_ai_cohort\": {\n    \"size\": 134,\n    \"period_days\": 14,\n    \"services\": [\n      \"payments\",\n      \"auth\",\n      \"catalog\"\n    ]\n  },\n  \"controls\": {\n    \"same_period\": true,\n    \"same_services\": true,\n    \"complexity_controlled\": true,\n    \"pr_size_median_ai\": 142,\n    \"pr_size_median_nonai\": 138\n  },\n  \"minimum_sample_size\": 30,\n  \"cohort_valid\": true\n}"
+				}
+			]
+		},
+		{
+			"name": "L-Score Data (Agent Mode Times)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/agent-mode-times",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"agent-mode-times"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "L-Score Data (Agent Mode Times) \u2014 200 OK",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{mock_base_url}}/stub/agent-mode-times",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"agent-mode-times"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"description": "",
+							"enabled": true
+						}
+					],
+					"cookie": [],
+					"body": "{\"time_saved_hours\":14.5,\"tasks_completed\":23,\"avg_task_duration_minutes\":38,\"cognitive_load_index\":0.28,\"perceived_productivity\":0.35,\"paradox_gap\":0.17,\"source\":\"mock\",\"period\":\"last_7_days\"}"
+				}
+			]
+		},
+		{
+			"name": "Criticality Data",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/api-catalog/criticality",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"api-catalog",
+						"criticality"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Criticality 200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/api-catalog/criticality",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"api-catalog",
+								"criticality"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"services\": [\n    {\n      \"name\": \"payments-api\",\n      \"criticality\": \"critical\",\n      \"ai_deployed\": true\n    },\n    {\n      \"name\": \"auth-service\",\n      \"criticality\": \"critical\",\n      \"ai_deployed\": true\n    },\n    {\n      \"name\": \"catalog-api\",\n      \"criticality\": \"standard\",\n      \"ai_deployed\": true\n    },\n    {\n      \"name\": \"notification-svc\",\n      \"criticality\": \"low\",\n      \"ai_deployed\": true\n    },\n    {\n      \"name\": \"analytics-api\",\n      \"criticality\": \"standard\",\n      \"ai_deployed\": false\n    },\n    {\n      \"name\": \"admin-portal\",\n      \"criticality\": \"low\",\n      \"ai_deployed\": false\n    }\n  ],\n  \"coverage\": 1.0,\n  \"criticality_distribution\": {\n    \"critical\": 2,\n    \"standard\": 2,\n    \"low\": 2\n  }\n}"
+				}
+			]
+		},
+		{
+			"name": "L-Score Data (DORA Throughput)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/stub/dora-throughput",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"stub",
+						"dora-throughput"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "DORA Throughput 200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/stub/dora-throughput",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"stub",
+								"dora-throughput"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"deployment_frequency_current\": 4.2,\n  \"deployment_frequency_baseline\": 3.8,\n  \"throughput_trend\": \"improving\",\n  \"throughput_delta_pct\": 10.5,\n  \"source\": \"mock\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Guardrails Status Data",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{mock_base_url}}/guardrails/status",
+					"host": [
+						"{{mock_base_url}}"
+					],
+					"path": [
+						"guardrails",
+						"status"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Guardrails 200",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{mock_base_url}}/guardrails/status",
+							"host": [
+								"{{mock_base_url}}"
+							],
+							"path": [
+								"guardrails",
+								"status"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						}
+					],
+					"cookie": [],
+					"body": "{\n  \"override_tracking\": {\n    \"enabled\": true,\n    \"overrides_30d\": 7,\n    \"total_suggestions_30d\": 1247\n  },\n  \"hallucination_detection\": {\n    \"enabled\": true,\n    \"incidents_30d\": 3,\n    \"false_positive_rate\": 0.12\n  },\n  \"security_scanning\": {\n    \"enabled\": true,\n    \"vulnerabilities_caught_30d\": 9,\n    \"critical\": 1,\n    \"high\": 3,\n    \"medium\": 5\n  },\n  \"all_guardrails_active\": true\n}"
+				}
+			]
+		}
+	]
+}

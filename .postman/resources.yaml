@@ -1,0 +1,12 @@
+# Use this workspace to collaborate
+workspace:
+  id: 4a177684-515a-408e-8948-7f3531ce41f5
+localResources:
+  collections:
+    - ../collection/01 AIEI Setup & Configuration.postman_collection.json
+    - ../collection/02 AIEI Scoring Pipeline.postman_collection.json
+    - ../collection/03 AIEI Executive Package.postman_collection.json
+    - ../collection/04 AIEI Operations.postman_collection.json
+    - ../collection/05 AIEI Mock Data Server.postman_collection.json
+  environments:
+    - ../collection/AIEI_Environment_Template.postman_environment.json

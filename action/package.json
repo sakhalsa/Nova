@@ -1,0 +1,22 @@
+{
+  "name": "@sachsk23/aiei-action",
+  "version": "1.5.0",
+  "description": "AIEI GitHub Action - comment AIEI scores on pull requests",
+  "type": "module",
+  "main": "dist/action.js",
+  "files": ["dist/"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "https://github.com/postmanlabs/AIEI-Framework.git", "directory": "action" },
+  "dependencies": {
+    "@sachsk23/aiei-engine": "1.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  }
+}

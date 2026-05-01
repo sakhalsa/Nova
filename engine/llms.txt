@@ -1,0 +1,48 @@
+# @postmanlabs/aiei-engine
+
+> AIEI measures AI-assisted engineering effectiveness from connected tools (GitHub, Postman, observability, cost, security signals).
+> AIEI is not a score for whether your public documentation site is agent-ready. See THESIS.md for what AIEI is and is not.
+
+## Start here
+
+- Thesis: ../THESIS.md
+- README: ../README.md
+- OpenAPI (HTTP contract): openapi.yaml
+- Changelog: ../CHANGELOG.md
+
+## What AIEI measures
+
+- Q (Quality): defect rate of AI-assisted code vs baseline, test pass, rework, plus runtime contract signals
+- L (Lead Time): cycle time delta with optional deploy frequency bonus
+- R (Reliability): change failure rate, SLO attainment, contract catch rate, uptime, workflow adaptability
+- C (Cost Efficiency): labor savings vs AI tooling spend, normalized to target ROI
+- S (Security): supplemental, multiplicative across spec security, dependabot, code scanning, secret scanning
+
+Run `aiei formula` for the current math. Every formula, constant, and weight profile is documented in ../SCORING.md and ../SIGNALS.md.
+
+## Pilot path
+
+- Three commands: `aiei init`, `aiei validate`, `aiei score --format html`
+- Pilot runbook: ../docs/PILOT_RUNBOOK.md
+- Connector access guidance: ../CONNECTOR_SCOPES.md
+- Connector registry: ../CONNECTORS.md
+
+## Agent and MCP usage
+
+- MCP debugging and safe mode: ../docs/MCP_DEBUGGING.md
+- MCP package: ../mcp-server
+- Agent-native CLI design: ../cli/AGENT_NATIVE_CLI_SPEC.md
+
+## Assessment JSON (implementers)
+
+- CompositeResult: openapi.yaml components/schemas/CompositeResult (includes runGuidance, axMapping, epistemicSummary)
+- Schema constant: src/types.ts (SCHEMA_VERSION)
+- Migration notes between versions: ../MIGRATION.md
+
+## What AIEI is not
+
+- Not a documentation site agent-readiness scorer
+- Not a replacement for agent gateways, MCP servers, or workflow orchestration platforms
+- Not a media pipeline, video QoE, or client-side performance tool
+
+See THESIS.md for the full positioning.
